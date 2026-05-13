@@ -1,0 +1,74 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+.project
+.idea/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The Python spec file contains local paths, so it's better to exclude it
+*.spec
+
+# JCenter cache
+.gradle/
+
+# Local configuration files (secrets, webhooks, etc)
+.env*
+
+# Flutter/Dart/Pub related
+lib/firebase_options.dart
+**/doc/api/
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/App.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/DerivedData
+**.flutter-plugins
+**.flutter-plugins-dependencies
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place its settings in a .idea folder
+.idea/
+
+# Android related
+**/android/key.properties
+**/android/app/local.properties
+**/android/app/**/generated.asciidoc
+**/android/app/google-services.json
+**/android/app/src/main/res/values/strings.xml
+
+# iOS related
+**/ios/Runner/GeneratedPluginRegistrant.h
+**/ios/Runner/GeneratedPluginRegistrant.m
+**/ios/Runner/GoogleService-Info.plist
+
+# VS Code related
+.vscode/
+
+# Web related
+.web/
