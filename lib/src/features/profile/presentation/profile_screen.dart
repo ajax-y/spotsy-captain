@@ -1,13 +1,18 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../common_widgets/glass_container.dart';
 import '../../../services/storage_service.dart';
+import '../../../services/firebase_auth_service.dart';
 import '../../../models/user_model.dart';
 import '../../../models/bank_account.dart';
 import '../data/profile_providers.dart';
+import '../../auth/data/auth_providers.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -145,20 +150,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _addBankAccount() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Bank Account'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(decoration: const InputDecoration(labelText: 'Account Holder Name')),
-            TextField(decoration: const InputDecoration(labelText: 'Account Number'), keyboardType: TextInputType.number),
-            TextField(decoration: const InputDecoration(labelText: 'IFSC Code')),
-          ],
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: GlassContainer(
+          padding: const EdgeInsets.all(24),
+          borderRadius: 32,
+          opacity: 0.1,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Add Bank Account', textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 24),
+              _editField('Account Holder Name', TextEditingController(), Icons.person_outline_rounded),
+              const SizedBox(height: 16),
+              _editField('Account Number', TextEditingController(), Icons.account_balance_rounded),
+              const SizedBox(height: 16),
+              _editField('IFSC Code', TextEditingController(), Icons.code_rounded),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('ADD'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
-          ElevatedButton(onPressed: () { Navigator.pop(context); }, child: const Text('ADD')),
-        ],
       ),
     );
   }
@@ -167,184 +196,306 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final userAsync = ref.watch(userProfileProvider);
-    final bankAsync = ref.watch(bankAccountsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold)),
-        actions: [
-          if (!_isEditing) 
-            IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () {
-              final user = userAsync.value;
-              if (user != null) {
-                _businessC.text = user.businessName ?? '';
-                _emailC.text = user.email ?? '';
-                setState(() => _isEditing = true);
-              }
-            })
-          else
-            TextButton(onPressed: _isSaving ? null : _saveProfile, child: _isSaving 
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('SAVE', style: TextStyle(fontWeight: FontWeight.bold))),
+      body: Stack(
+        children: [
+          // Background Blobs
+          Positioned(top: -100, right: -50, child: _GlowBlob(color: theme.colorScheme.primary.withValues(alpha: 0.1))),
+          
+          userAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, st) => Center(child: Text('Error: $e')),
+            data: (user) {
+              if (user == null) return const Center(child: Text('No user data'));
+              
+              return SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            onPressed: () => context.go('/dashboard'),
+                            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                          ),
+                          Text('Profile', style: theme.textTheme.titleLarge),
+                          IconButton(
+                            onPressed: () {
+                              _businessC.text = user.businessName ?? '';
+                              _emailC.text = user.email ?? '';
+                              setState(() => _isEditing = !_isEditing);
+                            },
+                            icon: Icon(_isEditing ? Icons.close_rounded : Icons.settings_outlined),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                      
+                      // Avatar Section
+                      GestureDetector(
+                        onTap: _isUploadingProfile ? null : _updateProfilePicture,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle, 
+                            border: Border.all(color: theme.colorScheme.primary, width: 2),
+                          ),
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 50,
+                                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+                                child: user.photoUrl == null ? Icon(Icons.person, size: 50, color: theme.colorScheme.primary) : null,
+                              ),
+                              if (_isUploadingProfile)
+                                const Positioned.fill(child: Center(child: CircularProgressIndicator())),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(user.name, style: theme.textTheme.headlineMedium),
+                      const SizedBox(height: 4),
+                      Text(user.loginId, style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 12),
+                      
+                      // Premium Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.stars_rounded, color: theme.colorScheme.primary, size: 16),
+                            const SizedBox(width: 8),
+                            Text('Premium Captain', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      
+                      if (_isEditing) ...[
+                        _sectionHeader('Edit Business Profile'),
+                        const SizedBox(height: 16),
+                        GlassContainer(
+                          padding: const EdgeInsets.all(20),
+                          borderRadius: 24,
+                          child: Column(
+                            children: [
+                              _editField('Business Name', _businessC, Icons.business_rounded),
+                              const SizedBox(height: 16),
+                              _editField('Email Address', _emailC, Icons.email_rounded),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: _isSaving ? null : _saveProfile,
+                                child: _isSaving 
+                                  ? const CircularProgressIndicator(color: Colors.black)
+                                  : const Text('Update Profile'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        // Account Section
+                        _ProfileMenuSection(
+                          title: 'Account',
+                          items: [
+                            _ProfileMenuItem(
+                              icon: Icons.verified_user_rounded, 
+                              title: 'KYC Status', 
+                              trailing: user.kycStatus,
+                              trailingColor: user.kycStatus == 'VERIFIED' ? theme.colorScheme.primary : Colors.orange,
+                              onTap: () => _showKycDialog(user),
+                            ),
+                            _ProfileMenuItem(
+                              icon: Icons.account_balance_rounded, 
+                              title: 'Bank Accounts', 
+                              onTap: _addBankAccount,
+                            ),
+                            _ProfileMenuItem(
+                              icon: Icons.history_rounded, 
+                              title: 'Activity History', 
+                              onTap: () {},
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        // Support Section
+                        _ProfileMenuSection(
+                          title: 'Support & Settings',
+                          items: [
+                            _ProfileMenuItem(icon: Icons.help_outline_rounded, title: 'Help Center', onTap: () {}),
+                            _ProfileMenuItem(icon: Icons.policy_outlined, title: 'Privacy Policy', onTap: () {}),
+                            _ProfileMenuItem(
+                              icon: Icons.logout_rounded, 
+                              title: 'Sign Out', 
+                              titleColor: Colors.redAccent,
+                              onTap: () async {
+                                final auth = FirebaseAuthService();
+                                await auth.logout();
+                                if (mounted) context.go('/login');
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 120),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
-      body: userAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Error: $e')),
-        data: (user) {
-          if (user == null) return const Center(child: Text('No user data'));
-          
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Column(children: [
-              const SizedBox(height: 16),
-              // Avatar
-              GestureDetector(
-                onTap: _isUploadingProfile ? null : _updateProfilePicture,
-                child: Stack(
-                  children: [
-                    Container(width: 100, height: 100, decoration: BoxDecoration(shape: BoxShape.circle,
-                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                      border: Border.all(color: theme.colorScheme.primary, width: 3),
-                      image: user.photoUrl != null ? DecorationImage(image: NetworkImage(user.photoUrl!), fit: BoxFit.cover) : null),
-                      child: user.photoUrl == null ? Icon(Icons.person, size: 54, color: theme.colorScheme.primary) : null),
-                    if (_isUploadingProfile)
-                      const Positioned.fill(child: Center(child: CircularProgressIndicator())),
-                    Positioned(bottom: 0, right: 0, child: Container(padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),
-                      child: const Icon(Icons.camera_alt, size: 16, color: Colors.black))),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(user.name, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text('Owner Account', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
-              const SizedBox(height: 32),
+    );
+  }
 
-              // Business Info
-              _sectionHeader('Business Details'),
-              const SizedBox(height: 12),
-              if (_isEditing) ...[
-                _editField('Business Name', _businessC, Icons.business),
-                const SizedBox(height: 12),
-                _editField('Email Address', _emailC, Icons.email_outlined),
-                const SizedBox(height: 12),
+  void _showKycDialog(UserModel user) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (ctx, setS) => Container(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, top: 20, left: 24, right: 24),
+          decoration: const BoxDecoration(
+            color: Color(0xFF121212),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 24),
+              Text('Aadhaar KYC', style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text('Verify your identity to list more spaces', style: TextStyle(color: Colors.white54, fontSize: 13)),
+              const SizedBox(height: 24),
+              if (user.kycStatus == 'VERIFIED') ...[
+                _kycDetail('Status', 'Verified', color: Colors.green),
+                _kycDetail('Aadhaar', 'XXXX XXXX ${user.aadhaarLast4}'),
+                _kycDetail('Address', user.address ?? '-'),
+                const SizedBox(height: 32),
               ] else ...[
-                _tile(Icons.business, 'Business Name', user.businessName ?? 'Not set'),
-                _tile(Icons.phone, 'Phone Number', user.loginId),
-                _tile(Icons.email_outlined, 'Email', user.email ?? 'Not set'),
+                TextField(
+                  controller: _aadhaarC,
+                  keyboardType: TextInputType.number,
+                  maxLength: 12,
+                  decoration: const InputDecoration(hintText: '12-digit Aadhaar Number'),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _isVerifying ? null : () {
+                    _verifyKyc(user);
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Verify Now'),
+                ),
+                const SizedBox(height: 32),
               ],
-
-              const SizedBox(height: 24),
-              _sectionHeader('Aadhaar KYC'),
-              const SizedBox(height: 12),
-              Container(padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: const Color(0xFF252525), borderRadius: BorderRadius.circular(16)),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    const Text('Verification Status', style: TextStyle(fontWeight: FontWeight.w600)),
-                    _kycBadge(user.kycStatus),
-                  ]),
-                  const SizedBox(height: 16),
-                  if (user.kycStatus == 'VERIFIED') ...[
-                    _kycDetail('Full Name', user.name),
-                    _kycDetail('Date of Birth', user.dob ?? '-'),
-                    _kycDetail('Gender', user.gender ?? '-'),
-                    _kycDetail('Address', user.address ?? '-'),
-                    _kycDetail('Aadhaar', 'XXXX XXXX ${user.aadhaarLast4 ?? 'XXXX'}'),
-                  ] else ...[
-                    TextField(controller: _aadhaarC, keyboardType: TextInputType.number, maxLength: 12,
-                      decoration: const InputDecoration(hintText: 'Enter 12-digit Aadhaar number', prefixIcon: Icon(Icons.credit_card), counterText: '')),
-                    const SizedBox(height: 12),
-                    SizedBox(width: double.infinity, child: ElevatedButton(
-                      onPressed: _isVerifying ? null : () => _verifyKyc(user),
-                      child: _isVerifying
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                        : const Text('VERIFY AADHAAR'))),
-                  ],
-                ])),
-
-              const SizedBox(height: 24),
-              _sectionHeader('Bank Accounts'),
-              const SizedBox(height: 12),
-              bankAsync.when(
-                data: (banks) => Column(children: [
-                  ...banks.map((b) => _tile(Icons.account_balance, b.bankName, b.maskedAccountNumber)),
-                  TextButton.icon(onPressed: _addBankAccount, icon: const Icon(Icons.add), label: const Text('ADD BANK ACCOUNT')),
-                ]),
-                loading: () => const LinearProgressIndicator(),
-                error: (e, st) => Text('Error loading banks: $e'),
-              ),
-
-              const SizedBox(height: 32),
-              SizedBox(width: double.infinity, child: OutlinedButton.icon(
-                onPressed: () async {
-                  await FirebaseAuth.instance.signOut();
-                  if (mounted) context.go('/login');
-                },
-                icon: const Icon(Icons.logout, color: Colors.redAccent),
-                label: const Text('LOG OUT', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.redAccent),
-                  minimumSize: const Size.fromHeight(50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))))),
-              const SizedBox(height: 32),
-            ]),
-          );
-        },
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _editField(String label, TextEditingController controller, IconData icon) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _sectionHeader(label),
-      const SizedBox(height: 6),
-      TextField(controller: controller, decoration: InputDecoration(prefixIcon: Icon(icon, size: 20))),
-    ]);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        TextField(controller: controller, decoration: InputDecoration(prefixIcon: Icon(icon, size: 20))),
+      ],
+    );
   }
 
   Widget _sectionHeader(String text) => Align(alignment: Alignment.centerLeft,
-    child: Text(text, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[400], fontSize: 13)));
+    child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white38, fontSize: 13, letterSpacing: 1.2)));
 
-  Widget _kycBadge(String status) {
-    Color c; String t;
-    switch (status) {
-      case 'VERIFIED': c = Colors.green; t = 'VERIFIED';
-      case 'VERIFYING': c = Colors.blue; t = 'VERIFYING...';
-      default: c = Colors.orange; t = 'PENDING';
-    }
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(color: c.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
-      child: Text(t, style: TextStyle(color: c, fontWeight: FontWeight.bold, fontSize: 12)));
+  Widget _kycDetail(String label, String value, {Color? color}) => Padding(padding: const EdgeInsets.only(bottom: 12),
+    child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      Text(label, style: const TextStyle(color: Colors.white54, fontSize: 14)),
+      Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: color ?? Colors.white)),
+    ]),
+  );
+}
+
+class _ProfileMenuSection extends StatelessWidget {
+  final String title;
+  final List<_ProfileMenuItem> items;
+
+  const _ProfileMenuSection({required this.title, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(color: Colors.white38, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2)),
+        const SizedBox(height: 16),
+        GlassContainer(
+          padding: EdgeInsets.zero,
+          borderRadius: 24,
+          opacity: 0.03,
+          child: Column(children: items),
+        ),
+      ],
+    );
   }
+}
 
-  Widget _kycDetail(String label, String value) => Padding(padding: const EdgeInsets.only(bottom: 10),
-    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      SizedBox(width: 100, child: Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 13))),
-      Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500))),
-    ]));
+class _ProfileMenuItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? trailing;
+  final Color? trailingColor;
+  final Color? titleColor;
+  final VoidCallback onTap;
 
-  Widget _tile(IconData icon, String title, String subtitle, {VoidCallback? onTap}) {
-    final theme = Theme.of(context);
-    return Padding(padding: const EdgeInsets.only(bottom: 12), child: Container(
-      decoration: BoxDecoration(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(16)),
-      child: ListTile(onTap: onTap,
-        leading: Container(padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
-          child: Icon(icon, color: theme.colorScheme.primary, size: 22)),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-        trailing: Icon(Icons.chevron_right, color: Colors.grey[600]),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))));
+  const _ProfileMenuItem({required this.icon, required this.title, this.trailing, this.trailingColor, this.titleColor, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), shape: BoxShape.circle),
+        child: Icon(icon, color: titleColor ?? Colors.white70, size: 20),
+      ),
+      title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: titleColor)),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailing != null) ...[
+            Text(trailing!, style: TextStyle(color: trailingColor ?? Colors.white54, fontSize: 13, fontWeight: FontWeight.bold)),
+            const SizedBox(width: 8),
+          ],
+          const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white12),
+        ],
+      ),
+    );
   }
+}
 
-  Widget _ratingBar(String star, double fraction) {
-    return Padding(padding: const EdgeInsets.only(bottom: 4), child: Row(children: [
-      Text(star, style: TextStyle(fontSize: 12, color: Colors.grey[500])), const SizedBox(width: 8),
-      Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(2),
-        child: LinearProgressIndicator(value: fraction, minHeight: 4, backgroundColor: Colors.grey[800],
-          valueColor: const AlwaysStoppedAnimation(Colors.amber)))),
-    ]));
+class _GlowBlob extends StatelessWidget {
+  final Color color;
+  final double size;
+  const _GlowBlob({required this.color, this.size = 300});
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80), child: Container(color: Colors.transparent)));
   }
 }

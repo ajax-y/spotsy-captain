@@ -54,67 +54,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
           // Background Blobs
-          Positioned(
-            top: -50,
-            left: -50,
-            child: Container(
-              width: 250,
-              height: 250,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-              ),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                child: Container(color: Colors.transparent),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 100,
-            right: -80,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.08),
-              ),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                child: Container(color: Colors.transparent),
-              ),
-            ),
-          ),
+          Positioned(top: -50, left: -50, child: _GlowBlob(color: theme.colorScheme.primary.withValues(alpha: 0.1))),
+          Positioned(bottom: -50, right: -50, child: _GlowBlob(color: theme.colorScheme.secondary.withValues(alpha: 0.05))),
+          
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   IconButton(
                     alignment: Alignment.centerLeft,
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
                     onPressed: () => context.go('/login'),
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    'Join Spotsy\nCaptain',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
+                  Text('Create Account', style: theme.textTheme.headlineLarge),
                   const SizedBox(height: 8),
-                  Text(
-                    'Turn your empty space into earnings',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.white54,
-                        ),
-                  ),
+                  Text('Join the Spotsy Captain network', style: theme.textTheme.bodyLarge),
                   const SizedBox(height: 48),
+                  
                   GlassContainer(
+                    borderRadius: 32,
+                    opacity: 0.03,
                     child: Column(
                       children: [
                         TextField(
@@ -130,7 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           keyboardType: TextInputType.phone,
                           decoration: const InputDecoration(
                             hintText: 'Phone Number',
-                            prefixIcon: Icon(Icons.phone_outlined),
+                            prefixIcon: Icon(Icons.phone_iphone_rounded),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -139,18 +107,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           obscureText: true,
                           decoration: const InputDecoration(
                             hintText: 'Password',
-                            prefixIcon: Icon(Icons.lock_outline_rounded),
+                            prefixIcon: Icon(Icons.lock_open_rounded),
                           ),
                         ),
                         const SizedBox(height: 32),
                         ElevatedButton(
                           onPressed: _isLoading ? null : _handleRegister,
-                          child: _isLoading
+                          child: _isLoading 
                               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                              : const Text('CREATE ACCOUNT'),
+                              : const Text('Register'),
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Already have an account? ', style: TextStyle(color: Colors.white38)),
+                      GestureDetector(
+                        onTap: () => context.go('/login'),
+                        child: Text(
+                          'Log In',
+                          style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -159,5 +141,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ],
       ),
     );
+  }
+}
+
+class _GlowBlob extends StatelessWidget {
+  final Color color;
+  const _GlowBlob({required this.color});
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 300, height: 300, decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80), child: Container(color: Colors.transparent)));
   }
 }

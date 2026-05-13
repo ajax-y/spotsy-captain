@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../common_widgets/glass_container.dart';
 import '../../../models/parking_space.dart';
 import '../../../services/storage_service.dart';
 import '../../dashboard/data/dashboard_providers.dart';
@@ -95,11 +97,15 @@ class _AddEditParkingScreenState extends ConsumerState<AddEditParkingScreen> {
       );
       
       if (mounted) {
-        setState(() {
-          _lat = pos.latitude;
-          _lng = pos.longitude;
+        Future.microtask(() {
+          if (mounted) {
+            setState(() {
+              _lat = pos.latitude;
+              _lng = pos.longitude;
+            });
+            _mapController.move(LatLng(_lat, _lng), 15.0);
+          }
         });
-        _mapController.move(LatLng(_lat, _lng), 15.0);
       }
     } catch (e) {
       _snack('Error getting location: $e', Colors.redAccent);
@@ -209,156 +215,186 @@ class _AddEditParkingScreenState extends ConsumerState<AddEditParkingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.go('/dashboard')),
-        title: Text(_isEdit ? 'Edit Parking Space' : 'Add Parking Space', style: const TextStyle(fontWeight: FontWeight.bold)),
-        actions: _isEdit ? [IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent), onPressed: () async {
-          await ref.read(firestoreServiceProvider).deleteSpace(widget.spaceId!);
-          if (context.mounted) context.go('/dashboard');
-        })] : null,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(key: _formKey, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Loading Overlay
-          if (_isUploading) const LinearProgressIndicator(),
-          _label('Space Name'),
-          TextFormField(controller: _nameC, decoration: const InputDecoration(hintText: 'e.g. MG Road Parking Lot'),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null),
-          const SizedBox(height: 16),
-          _label('Location'),
-          const SizedBox(height: 8),
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey[800]!),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(15),
-              child: Stack(
-                children: [
-                  FlutterMap(
-                    mapController: _mapController,
-                    options: MapOptions(
-                      initialCenter: LatLng(_lat, _lng),
-                      initialZoom: 15.0,
-                      onTap: (tapPos, point) {
-                        setState(() {
-                          _lat = point.latitude;
-                          _lng = point.longitude;
-                        });
-                      },
+      body: Stack(
+        children: [
+          Positioned(top: -100, left: -50, child: _GlowBlob(color: theme.colorScheme.primary.withValues(alpha: 0.1))),
+          
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        IconButton(onPressed: () => context.go('/dashboard'), icon: const Icon(Icons.arrow_back_ios_new_rounded)),
+                        Text(_isEdit ? 'Edit Space' : 'Add Space', style: theme.textTheme.headlineSmall),
+                        const Spacer(),
+                        if (_isEdit)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                            onPressed: () async {
+                              await ref.read(firestoreServiceProvider).deleteSpace(widget.spaceId!);
+                              if (context.mounted) context.go('/dashboard');
+                            },
+                          ),
+                      ],
                     ),
-                    children: [
-                      TileLayer(
-                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      ),
-                      MarkerLayer(
-                        markers: [
-                          Marker(
-                            point: LatLng(_lat, _lng),
-                            width: 40,
-                            height: 40,
-                            child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+                    if (_isUploading) const LinearProgressIndicator(),
+                    const SizedBox(height: 32),
+                    
+                    _sectionHeader('Basic Information'),
+                    const SizedBox(height: 16),
+                    GlassContainer(
+                      padding: const EdgeInsets.all(20),
+                      borderRadius: 24,
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _nameC,
+                            decoration: const InputDecoration(hintText: 'Space Name (e.g. My Garage)'),
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _totalC,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(hintText: 'Total Spots'),
+                                  validator: (v) => (v == null || int.tryParse(v) == null) ? 'Invalid' : null,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _priceC,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(hintText: '₹ / Hour'),
+                                  validator: (v) => (v == null || double.tryParse(v) == null) ? 'Invalid' : null,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                    Positioned(
-                    right: 8,
-                    top: 8,
-                    child: FloatingActionButton.small(
-                      heroTag: 'curr_loc',
-                      onPressed: _fetchCurrentLocation,
-                      child: const Icon(Icons.my_location, size: 18),
                     ),
-                  ),
-                ],
+                    
+                    const SizedBox(height: 32),
+                    _sectionHeader('Location Selection'),
+                    const SizedBox(height: 16),
+                    Container(
+                      height: 220,
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white10)),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Stack(
+                          children: [
+                            FlutterMap(
+                              mapController: _mapController,
+                              options: MapOptions(
+                                initialCenter: LatLng(_lat, _lng),
+                                initialZoom: 15.0,
+                                onTap: (tapPos, point) => setState(() { _lat = point.latitude; _lng = point.longitude; }),
+                              ),
+                              children: [
+                                TileLayer(
+                                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                  tileBuilder: (context, tileWidget, tile) => ColorFiltered(
+                                    colorFilter: const ColorFilter.matrix([-1,0,0,0,255, 0,-1,0,0,255, 0,0,-1,0,255, 0,0,0,1,0]),
+                                    child: tileWidget,
+                                  ),
+                                ),
+                                MarkerLayer(markers: [
+                                  Marker(point: LatLng(_lat, _lng), width: 40, height: 40, 
+                                    child: const Icon(Icons.location_on_rounded, color: Colors.orange, size: 40)),
+                                ]),
+                              ],
+                            ),
+                            Positioned(right: 12, top: 12, child: FloatingActionButton.small(
+                              heroTag: null, onPressed: _fetchCurrentLocation, backgroundColor: Colors.black, child: const Icon(Icons.my_location_rounded, color: Colors.white, size: 18))),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    _sectionHeader('Amenities'),
+                    const SizedBox(height: 16),
+                    Wrap(spacing: 8, runSpacing: 8, children: [
+                      _amenityChip('EV Charging', Icons.ev_station_rounded, _hasEv, (v) => setState(() => _hasEv = v)),
+                      _amenityChip('CCTV', Icons.videocam_rounded, _hasCctv, (v) => setState(() => _hasCctv = v)),
+                      _amenityChip('Security', Icons.security_rounded, _hasSecurity, (v) => setState(() => _hasSecurity = v)),
+                      _amenityChip('Covered', Icons.roofing_rounded, _isCovered, (v) => setState(() => _isCovered = v)),
+                      _amenityChip('24/7', Icons.access_time_filled_rounded, _is24x7, (v) => setState(() => _is24x7 = v)),
+                    ]),
+                    const SizedBox(height: 32),
+                    
+                    _sectionHeader('Photos'),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 100,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          ..._existingPhotos.map((p) => _photoFrame(Image.network(p.url, fit: BoxFit.cover))),
+                          ..._selectedFiles.map((f) => _photoFrame(Image.file(File(f.path), fit: BoxFit.cover))),
+                          GestureDetector(
+                            onTap: _pickImage,
+                            child: Container(
+                              width: 100,
+                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.03), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white10)),
+                              child: const Icon(Icons.add_a_photo_rounded, color: Colors.white24, size: 32),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+                    ElevatedButton(
+                      onPressed: _isUploading ? null : _save,
+                      child: _isUploading ? const CircularProgressIndicator(color: Colors.black) : Text(_isEdit ? 'Save Changes' : 'Add Parking Space'),
+                    ),
+                    const SizedBox(height: 60),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Tap on map to set exact location',
-            style: TextStyle(color: Colors.grey[500], fontSize: 12),
-          ),
-          const SizedBox(height: 16),
-          Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              _label('Total Spaces'),
-              TextFormField(controller: _totalC, keyboardType: TextInputType.number,
-                decoration: const InputDecoration(hintText: '20'),
-                validator: (v) => (v == null || int.tryParse(v) == null) ? 'Enter a number' : null),
-            ])),
-            const SizedBox(width: 16),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              _label('Price / Hour (₹)'),
-              TextFormField(controller: _priceC, keyboardType: TextInputType.number,
-                decoration: const InputDecoration(hintText: '30'),
-                validator: (v) => (v == null || double.tryParse(v) == null) ? 'Enter price' : null),
-            ])),
-          ]),
-          const SizedBox(height: 20),
-          _label('Vehicle Type'),
-          const SizedBox(height: 8),
-          SegmentedButton<SpaceType>(
-            segments: const [
-              ButtonSegment(value: SpaceType.bike, icon: Icon(Icons.two_wheeler), label: Text('Bike')),
-              ButtonSegment(value: SpaceType.car, icon: Icon(Icons.directions_car), label: Text('Car')),
-              ButtonSegment(value: SpaceType.mixed, icon: Icon(Icons.commute), label: Text('Mixed')),
-            ],
-            selected: {_spaceType},
-            onSelectionChanged: (s) => setState(() => _spaceType = s.first),
-            style: ButtonStyle(backgroundColor: WidgetStateProperty.resolveWith((states) =>
-              states.contains(WidgetState.selected) ? theme.colorScheme.primary.withValues(alpha: 0.2) : Colors.transparent)),
-          ),
-          const SizedBox(height: 20),
-          _label('Amenities'),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            _amenityChip('EV Charging', Icons.ev_station, _hasEv, (v) => setState(() => _hasEv = v)),
-            _amenityChip('CCTV', Icons.videocam, _hasCctv, (v) => setState(() => _hasCctv = v)),
-            _amenityChip('Security', Icons.security, _hasSecurity, (v) => setState(() => _hasSecurity = v)),
-            _amenityChip('Lighting', Icons.light, _hasLighting, (v) => setState(() => _hasLighting = v)),
-            _amenityChip('Covered', Icons.roofing, _isCovered, (v) => setState(() => _isCovered = v)),
-          ]),
-          const SizedBox(height: 20),
-          SwitchListTile(title: const Text('Open 24/7'), value: _is24x7, activeTrackColor: theme.colorScheme.primary.withValues(alpha: 0.5),
-            onChanged: (v) => setState(() => _is24x7 = v),
-            contentPadding: EdgeInsets.zero),
-          const SizedBox(height: 16),
-          
-          _label('Photos'),
-          const SizedBox(height: 8),
-          SizedBox(height: 100, child: ListView(scrollDirection: Axis.horizontal, children: [
-            ..._existingPhotos.map((p) => Container(margin: const EdgeInsets.only(right: 8), width: 100,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), image: DecorationImage(image: NetworkImage(p.url), fit: BoxFit.cover)))),
-            ..._selectedFiles.map((f) => Container(margin: const EdgeInsets.only(right: 8), width: 100,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), image: DecorationImage(image: FileImage(File(f.path)), fit: BoxFit.cover)))),
-            GestureDetector(onTap: _pickImage, child: Container(width: 100, decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[700]!, style: BorderStyle.solid), borderRadius: BorderRadius.circular(12)),
-              child: Center(child: Icon(Icons.add_a_photo_outlined, color: Colors.grey[600], size: 32)))),
-          ])),
-          
-          const SizedBox(height: 32),
-          ElevatedButton(onPressed: _isUploading ? null : _save, 
-            child: _isUploading ? const CircularProgressIndicator() : Text(_isEdit ? 'UPDATE SPACE' : 'ADD SPACE')),
-          const SizedBox(height: 24),
-        ])),
+        ],
       ),
     );
   }
 
-  Widget _label(String text) => Padding(padding: const EdgeInsets.only(bottom: 6),
-    child: Text(text, style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[400], fontSize: 13)));
+  Widget _sectionHeader(String title) => Text(title.toUpperCase(), style: const TextStyle(color: Colors.white38, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2));
+
+  Widget _photoFrame(Widget child) => Container(margin: const EdgeInsets.only(right: 12), width: 100, child: ClipRRect(borderRadius: BorderRadius.circular(16), child: child));
 
   Widget _amenityChip(String label, IconData icon, bool selected, ValueChanged<bool> onChanged) {
     final theme = Theme.of(context);
-    return FilterChip(label: Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 16), const SizedBox(width: 4), Text(label)]),
-      selected: selected, onSelected: onChanged,
-      selectedColor: theme.colorScheme.primary.withValues(alpha: 0.2),
-      checkmarkColor: theme.colorScheme.primary);
+    return ChoiceChip(
+      label: Text(label, style: TextStyle(color: selected ? Colors.black : Colors.white70, fontSize: 12)),
+      avatar: Icon(icon, size: 16, color: selected ? Colors.black : Colors.white70),
+      selected: selected,
+      onSelected: onChanged,
+      selectedColor: theme.colorScheme.primary,
+      backgroundColor: Colors.white.withValues(alpha: 0.05),
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+}
+
+class _GlowBlob extends StatelessWidget {
+  final Color color;
+  const _GlowBlob({required this.color});
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 400, height: 400, decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100), child: Container(color: Colors.transparent)));
   }
 }

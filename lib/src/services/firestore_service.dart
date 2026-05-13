@@ -143,7 +143,6 @@ class FirestoreService {
           createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
         );
       }).toList();
-      // Sort in Dart to avoid composite index requirement
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return list;
     });

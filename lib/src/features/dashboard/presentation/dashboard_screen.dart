@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../models/parking_space.dart';
 import '../data/dashboard_providers.dart';
+import '../../profile/data/profile_providers.dart';
 import '../../../common_widgets/glass_container.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -45,8 +46,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (p == LocationPermission.deniedForever) return;
 
     final pos = await Geolocator.getCurrentPosition();
-    setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
-    _mapController.move(_currentLocation, 15.0);
+    if (mounted) {
+      Future.microtask(() {
+        if (mounted) {
+          setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
+          _mapController.move(_currentLocation, 15.0);
+        }
+      });
+    }
 
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
@@ -55,7 +62,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
     ).listen((pos) {
       if (mounted) {
-        setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
+        Future.microtask(() {
+          if (mounted) {
+            setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
+          }
+        });
       }
     });
   }
@@ -91,11 +102,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final spacesAsync = ref.watch(parkingSpacesProvider);
     final spaces = spacesAsync.value ?? [];
     final theme = Theme.of(context);
+    final userProfileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 120),
+        child: FloatingActionButton(
+          heroTag: 'loc_btn',
+          onPressed: _goToCurrentLocation,
+          backgroundColor: theme.colorScheme.primary,
+          child: const Icon(Icons.my_location_rounded, color: Colors.black),
+        ),
+      ),
       body: Stack(
         children: [
-          // Map
+          // Map (High Contrast Dark)
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(initialCenter: _currentLocation, initialZoom: 14.0),
@@ -103,88 +124,145 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.spotsy',
-                tileBuilder: (context, tileWidget, tile) {
-                  return ColorFiltered(
-                    colorFilter: const ColorFilter.matrix([
-                      -0.2126, -0.7152, -0.0722, 0, 255,
-                      -0.2126, -0.7152, -0.0722, 0, 255,
-                      -0.2126, -0.7152, -0.0722, 0, 255,
-                      0, 0, 0, 1, 0,
-                    ]),
-                    child: tileWidget,
-                  );
-                },
               ),
               MarkerLayer(markers: [
                 Marker(point: _currentLocation, width: 24, height: 24, child: Container(
                   decoration: BoxDecoration(color: Colors.blue, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [BoxShadow(color: Colors.blue.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 3)]),
                 )),
-                ...spaces.map((s) => Marker(point: LatLng(s.latitude, s.longitude), width: 40, height: 40,
-                  child: GestureDetector(onTap: () => context.go('/parking/${s.id}'),
-                    child: Icon(Icons.local_parking_rounded, size: 36, color: _markerColor(s))))),
+                ...spaces.map((s) => Marker(point: LatLng(s.latitude, s.longitude), width: 44, height: 44,
+                  child: GestureDetector(
+                    onTap: () => context.go('/parking/${s.id}'),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.8),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _markerColor(s), width: 2),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '₹${s.pricePerHour.toInt()}',
+                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ))),
               ]),
             ],
           ),
-          // AppBar (Floating Glass)
+          
+          // Top Gradient Overlay (for text visibility)
           Positioned(
-            top: 40,
-            left: 20,
-            right: 20,
-            child: GlassContainer(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              borderRadius: 16,
-              child: Row(
+            top: 0, left: 0, right: 0,
+            child: Container(
+              height: 250,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.8),
+                    Colors.black.withValues(alpha: 0.4),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+
+          // Top UI Overlay
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
                 children: [
-                  const Icon(Icons.menu_rounded, color: Colors.white70),
-                  const SizedBox(width: 16),
-                  const Expanded(child: Text('Spotsy Captain', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
-                  IconButton(
-                    icon: const Icon(Icons.logout_rounded, color: Colors.white70),
-                    onPressed: () => context.go('/login'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text('Hello, ${userProfileAsync.value?.name ?? 'Alex'} ', style: theme.textTheme.headlineMedium?.copyWith(fontSize: 28, color: Colors.white)),
+                              const Text('👋', style: TextStyle(fontSize: 24)),
+                            ],
+                          ),
+                          const Text('Find and book your perfect parking spot', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () => context.go('/profile'),
+                        child: CircleAvatar(
+                          radius: 24,
+                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                          backgroundImage: userProfileAsync.value?.photoUrl != null ? NetworkImage(userProfileAsync.value!.photoUrl!) : null,
+                          child: userProfileAsync.value?.photoUrl == null ? Icon(Icons.person_rounded, color: theme.colorScheme.primary) : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Search Bar
+                  GlassContainer(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    borderRadius: 20,
+                    opacity: 0.1, // Increased visibility
+                    child: TextField(
+                      style: const TextStyle(color: Colors.white),
+                      onSubmitted: (val) {
+                        if (val.toLowerCase().contains('chennai')) {
+                          _mapController.move(const LatLng(13.0827, 80.2707), 13);
+                          _snack('Moving to Chennai...');
+                        } else {
+                          _snack('Searching for "$val"...');
+                        }
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search location',
+                        hintStyle: const TextStyle(color: Colors.white54),
+                        prefixIcon: const Icon(Icons.search_rounded, color: Colors.white70),
+                        suffixIcon: Icon(Icons.tune_rounded, color: theme.colorScheme.primary),
+                        filled: false,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          // Location FAB
-          Positioned(
-            right: 20,
-            top: 120,
-            child: GlassContainer(
-              padding: EdgeInsets.zero,
-              borderRadius: 12,
-              width: 44,
-              height: 44,
-              child: IconButton(
-                onPressed: _locationLoading ? null : _goToCurrentLocation,
-                icon: _locationLoading 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
-                    : const Icon(Icons.my_location_rounded, size: 20, color: Colors.white),
-              ),
-            ),
-          ),
+          
           // Bottom panel
           DraggableScrollableSheet(
+            key: const ValueKey('dashboard_sheet'),
             initialChildSize: 0.35, minChildSize: 0.15, maxChildSize: 0.85,
-            builder: (context, sc) => ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                  ),
+            builder: (context, sc) => Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF121212).withValues(alpha: 0.9),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              ),
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                   child: ListView(controller: sc, padding: const EdgeInsets.symmetric(horizontal: 20), children: [
                     Center(child: Container(margin: const EdgeInsets.symmetric(vertical: 12), width: 40, height: 4,
                       decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+                    
+                    // Quick Stats / Info Card
+                    const SizedBox(height: 12),
                     _buildQuickStats(context, stats),
-                    const SizedBox(height: 24),
+                    
+                    const SizedBox(height: 32),
                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      Text('My Parking Spaces', style: theme.textTheme.titleLarge),
-                      Text('${spaces.length} listed', style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                      Text('Nearby Parking', style: theme.textTheme.titleLarge),
+                      Text('See All', style: TextStyle(color: theme.colorScheme.primary, fontSize: 13, fontWeight: FontWeight.bold)),
                     ]),
                     const SizedBox(height: 16),
                     if (spaces.isEmpty) _buildEmptyState(context),
@@ -197,29 +275,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 80),
-        child: FloatingActionButton.extended(
-          heroTag: 'add',
-          onPressed: () => context.go('/parking/add'),
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('Add Space'),
-        ),
-      ),
     );
   }
 
   Widget _buildQuickStats(BuildContext context, DashboardStats stats) {
     return GlassContainer(
-      padding: const EdgeInsets.all(16),
-      borderRadius: 20,
+      padding: const EdgeInsets.all(20),
+      borderRadius: 24,
       opacity: 0.05,
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-        _stat('Earnings', '₹${stats.todayEarnings.toStringAsFixed(0)}', Icons.trending_up_rounded),
-        _stat('Active', '${stats.activeBookings}', Icons.directions_car_filled_rounded),
-        _stat('Spaces', '${stats.availableSpaces}/${stats.totalSpaces}', Icons.local_parking_rounded),
-        _stat('Rating', stats.averageRating.toStringAsFixed(1), Icons.star_rounded),
-      ]),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Quick Stats', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              const Icon(Icons.insights_rounded, color: Colors.white54, size: 20),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+            _stat('Earnings', '₹${stats.todayEarnings.toInt()}', Icons.account_balance_wallet_rounded),
+            _stat('Active', '${stats.activeBookings}', Icons.local_activity_rounded),
+            _stat('Spaces', '${stats.availableSpaces}', Icons.local_parking_rounded),
+            _stat('Rating', stats.averageRating.toStringAsFixed(1), Icons.stars_rounded),
+          ]),
+        ],
+      ),
     );
   }
 

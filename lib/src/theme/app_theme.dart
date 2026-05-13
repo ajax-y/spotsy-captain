@@ -3,21 +3,29 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static ThemeData get darkTheme {
+    const primaryColor = Color(0xFFFF9500); // Premium Orange
+    const backgroundColor = Color(0xFF000000); // True Black
+    const surfaceColor = Color(0x1AFFFFFF); // Translucent for Glass
+
     return ThemeData(
       brightness: Brightness.dark,
-      primaryColor: const Color(0xFF00E676),
-      scaffoldBackgroundColor: const Color(0xFF0A0A0A), // Even darker background
+      primaryColor: primaryColor,
+      scaffoldBackgroundColor: backgroundColor,
       colorScheme: const ColorScheme.dark(
-        primary: Color(0xFF00E676),
-        secondary: Color(0xFF00B0FF),
-        surface: Color(0x1AFFFFFF), // Translucent white for glass effect
+        primary: primaryColor,
+        secondary: Color(0xFFFFCC00), // Amber
+        surface: surfaceColor,
         onSurface: Colors.white,
+        onPrimary: Colors.black,
       ),
       textTheme: GoogleFonts.outfitTextTheme(
         ThemeData.dark().textTheme,
       ).copyWith(
-        headlineMedium: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
-        titleLarge: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: Colors.white),
+        headlineLarge: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+        headlineMedium: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+        titleLarge: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
+        bodyLarge: GoogleFonts.outfit(fontSize: 16, color: Colors.white70),
+        bodyMedium: GoogleFonts.outfit(fontSize: 14, color: Colors.white60),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -27,16 +35,15 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF00E676),
+          backgroundColor: primaryColor,
           foregroundColor: Colors.black,
           minimumSize: const Size.fromHeight(56),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 8,
-          shadowColor: const Color(0xFF00E676).withValues(alpha: 0.3),
+          elevation: 0,
           textStyle: GoogleFonts.outfit(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -46,19 +53,19 @@ class AppTheme {
         fillColor: Colors.white.withValues(alpha: 0.05),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF00E676), width: 1.5),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: const BorderSide(color: primaryColor, width: 1.5),
         ),
-        hintStyle: const TextStyle(color: Colors.white54),
-        prefixIconColor: Colors.white70,
+        hintStyle: const TextStyle(color: Colors.white38),
+        prefixIconColor: Colors.white60,
       ),
     );
   }

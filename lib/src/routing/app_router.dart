@@ -14,8 +14,9 @@ import '../features/shell/presentation/main_shell.dart';
 
 import '../features/auth/data/auth_providers.dart';
 
+
+
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
-final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -24,81 +25,48 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/dashboard',
     redirect: (context, state) {
-      // Don't redirect while auth state is loading
       if (authState.isLoading) return null;
-
+      
       final user = authState.value;
       final isLoggedIn = user != null;
       final isAuthRoute = state.uri.path == '/login' || state.uri.path == '/register';
 
-      if (!isLoggedIn) {
-        // Redirect to login if trying to access a protected route
-        return isAuthRoute ? null : '/login';
-      }
-
-      if (isLoggedIn && isAuthRoute) {
-        // Redirect to dashboard if already logged in and trying to access login/register
-        return '/dashboard';
-      }
-
+      if (!isLoggedIn) return isAuthRoute ? null : '/login';
+      if (isLoggedIn && isAuthRoute) return '/dashboard';
       return null;
     },
     routes: [
-      // Auth routes (no bottom nav)
-      GoRoute(path: '/login', name: 'login',
-        builder: (ctx, state) => const LoginScreen()),
-      GoRoute(path: '/register', name: 'register',
-        builder: (ctx, state) => const RegisterScreen()),
+      GoRoute(path: '/login', name: 'login', builder: (ctx, state) => const LoginScreen()),
+      GoRoute(path: '/register', name: 'register', builder: (ctx, state) => const RegisterScreen()),
 
-      // Main shell with bottom nav
-      ShellRoute(
-        navigatorKey: _shellNavigatorKey,
-        builder: (ctx, state, child) {
-          // Determine current tab index from location
-          final loc = state.uri.path;
-          int index = 0;
-          if (loc.startsWith('/bookings')) {
-            index = 1;
-          } else if (loc.startsWith('/earnings')) {
-            index = 2;
-          } else if (loc.startsWith('/profile')) {
-            index = 3;
-          }
-
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
           return MainShell(
-            currentIndex: index,
-            onTap: (i) {
-              switch (i) {
-                case 0: ctx.go('/dashboard');
-                case 1: ctx.go('/bookings');
-                case 2: ctx.go('/earnings');
-                case 3: ctx.go('/profile');
-              }
-            },
-            child: child,
+            currentIndex: navigationShell.currentIndex,
+            onTap: (index) => navigationShell.goBranch(index),
+            child: navigationShell,
           );
         },
-        routes: [
-          GoRoute(path: '/dashboard', name: 'dashboard',
-            builder: (ctx, state) => const DashboardScreen()),
-          GoRoute(path: '/bookings', name: 'bookings',
-            builder: (ctx, state) => const BookingsScreen()),
-          GoRoute(path: '/earnings', name: 'earnings',
-            builder: (ctx, state) => const EarningsScreen()),
-          GoRoute(path: '/profile', name: 'profile',
-            builder: (ctx, state) => const ProfileScreen()),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/dashboard', builder: (ctx, state) => const DashboardScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/bookings', builder: (ctx, state) => const BookingsScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/earnings', builder: (ctx, state) => const EarningsScreen()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: '/profile', builder: (ctx, state) => const ProfileScreen()),
+          ]),
         ],
       ),
 
-      // Full-screen routes (no bottom nav)
-      GoRoute(path: '/parking/add', name: 'parking-add',
-        builder: (ctx, state) => const AddEditParkingScreen()),
-      GoRoute(path: '/parking/:id', name: 'parking-detail',
-        builder: (ctx, state) => ParkingSpaceDetailScreen(spaceId: state.pathParameters['id']!)),
-      GoRoute(path: '/parking/:id/edit', name: 'parking-edit',
-        builder: (ctx, state) => AddEditParkingScreen(spaceId: state.pathParameters['id']!)),
-      GoRoute(path: '/earnings/bank-account', name: 'bank-account',
-        builder: (ctx, state) => const BankAccountScreen()),
+      GoRoute(path: '/parking/add', builder: (ctx, state) => const AddEditParkingScreen(), parentNavigatorKey: _rootNavigatorKey),
+      GoRoute(path: '/parking/:id', builder: (ctx, state) => ParkingSpaceDetailScreen(spaceId: state.pathParameters['id']!), parentNavigatorKey: _rootNavigatorKey),
+      GoRoute(path: '/parking/:id/edit', builder: (ctx, state) => AddEditParkingScreen(spaceId: state.pathParameters['id']!), parentNavigatorKey: _rootNavigatorKey),
+      GoRoute(path: '/earnings/bank-account', builder: (ctx, state) => const BankAccountScreen(), parentNavigatorKey: _rootNavigatorKey),
     ],
   );
 });
