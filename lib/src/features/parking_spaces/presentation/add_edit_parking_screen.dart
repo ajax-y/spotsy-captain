@@ -314,10 +314,6 @@ class _AddEditParkingScreenState extends ConsumerState<AddEditParkingScreen> {
                                 TileLayer(
                                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                   userAgentPackageName: 'com.spotsy.captain.app',
-                                  tileBuilder: (context, tileWidget, tile) => ColorFiltered(
-                                    colorFilter: const ColorFilter.matrix([-1,0,0,0,255, 0,-1,0,0,255, 0,0,-1,0,255, 0,0,0,1,0]),
-                                    child: tileWidget,
-                                  ),
                                 ),
                                 MarkerLayer(markers: [
                                   Marker(point: LatLng(_lat, _lng), width: 40, height: 40, 

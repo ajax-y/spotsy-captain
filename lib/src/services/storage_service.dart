@@ -19,12 +19,13 @@ class StorageService {
     final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
     final ref = _storage.ref().child('parking_spaces/$spaceId/$fileName');
 
-    final uploadTask = await ref.putData(
-      data,
-      SettableMetadata(contentType: 'image/jpeg'),
-    );
-
-    return await uploadTask.ref.getDownloadURL();
+    try {
+      final uploadTask = await ref.putData(data, SettableMetadata(contentType: 'image/jpeg'));
+      return await uploadTask.ref.getDownloadURL();
+    } catch (e) {
+      print('Upload error: $e');
+      return null;
+    }
   }
 
   Future<String?> uploadProfilePhoto(Uint8List data) async {
