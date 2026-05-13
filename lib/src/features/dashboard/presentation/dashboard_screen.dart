@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -223,7 +224,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           children: [
                             Row(
                               children: [
-                                Flexible(child: Text('Hello, ${userProfileAsync.value?.name ?? 'Alex'} ', style: theme.textTheme.headlineMedium?.copyWith(fontSize: 26, color: Colors.white, overflow: TextOverflow.ellipsis))),
+                                Flexible(
+                                  child: Text(
+                                    'Hello, ${userProfileAsync.value?.name ?? FirebaseAuth.instance.currentUser?.displayName ?? 'Captain'} ',
+                                    style: theme.textTheme.headlineMedium?.copyWith(
+                                      fontSize: 26,
+                                      color: Colors.white,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
                                 const Text('👋', style: TextStyle(fontSize: 24)),
                               ],
                             ),

@@ -274,7 +274,10 @@ class _AddEditParkingScreenState extends ConsumerState<AddEditParkingScreen> {
                                 child: TextFormField(
                                   controller: _totalC,
                                   keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(hintText: 'Total Spots'),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Spots',
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                  ),
                                   validator: (v) => (v == null || int.tryParse(v) == null) ? 'Invalid' : null,
                                 ),
                               ),
@@ -283,7 +286,10 @@ class _AddEditParkingScreenState extends ConsumerState<AddEditParkingScreen> {
                                 child: TextFormField(
                                   controller: _priceC,
                                   keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(hintText: '₹ / Hour'),
+                                  decoration: const InputDecoration(
+                                    hintText: '₹/hr',
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                  ),
                                   validator: (v) => (v == null || double.tryParse(v) == null) ? 'Invalid' : null,
                                 ),
                               ),

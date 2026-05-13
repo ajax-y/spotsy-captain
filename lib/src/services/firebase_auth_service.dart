@@ -34,6 +34,9 @@ class FirebaseAuthService {
     final userCred = await _auth.createUserWithEmailAndPassword(email: email, password: password);
 
     try {
+      // Set display name for fast access via FirebaseAuth
+      await userCred.user?.updateDisplayName(name);
+
       await _db.collection('users').doc(userCred.user!.uid).set({
         'name': name,
         'loginId': loginId,

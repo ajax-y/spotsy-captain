@@ -19,9 +19,13 @@ class FirestoreService {
         .collection('parking_spaces')
         .where('ownerId', isEqualTo: _uid)
         .snapshots()
-        .map((snapshot) => snapshot.docs
+        .map((snapshot) {
+          final list = snapshot.docs
             .map((doc) => ParkingSpace.fromMap(doc.data(), doc.id))
-            .toList());
+            .toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   Future<void> addSpace(ParkingSpace space) async {
@@ -29,6 +33,7 @@ class FirestoreService {
     await _db.collection('parking_spaces').add({
       ...space.toMap(),
       'ownerId': _uid,
+      'createdAt': FieldValue.serverTimestamp(),
     });
   }
 
