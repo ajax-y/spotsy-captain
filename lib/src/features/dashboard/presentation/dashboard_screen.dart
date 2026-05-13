@@ -89,9 +89,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(msg, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.redAccent,
+          content: Text(msg, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14)),
+          backgroundColor: Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         ),
       );
@@ -224,9 +225,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     child: TextField(
                       style: const TextStyle(color: Colors.white),
                       onSubmitted: (val) {
-                        if (val.toLowerCase().contains('chennai')) {
+                        final search = val.toLowerCase();
+                        if (search.contains('chennai')) {
                           _mapController.move(const LatLng(13.0827, 80.2707), 13);
                           _snack('Moving to Chennai...');
+                        } else if (search.contains('mumbai')) {
+                          _mapController.move(const LatLng(19.0760, 72.8777), 12);
+                          _snack('Moving to Mumbai...');
+                        } else if (search.contains('delhi')) {
+                          _mapController.move(const LatLng(28.6139, 77.2090), 12);
+                          _snack('Moving to Delhi...');
+                        } else if (search.contains('madurai')) {
+                          _mapController.move(const LatLng(9.9252, 78.1198), 13);
+                          _snack('Moving to Madurai...');
+                        } else if (search.contains('bangalore') || search.contains('bengaluru')) {
+                          _mapController.move(const LatLng(12.9716, 77.5946), 13);
+                          _snack('Moving to Bangalore...');
                         } else {
                           _snack('Searching for "$val"...');
                         }

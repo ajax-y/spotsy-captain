@@ -207,7 +207,16 @@ class _AddEditParkingScreenState extends ConsumerState<AddEditParkingScreen> {
 
   void _snack(String msg, [Color? color]) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color, duration: const Duration(seconds: 2)));
+      final theme = Theme.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg, style: TextStyle(color: (color == null || color == theme.colorScheme.primary) ? Colors.black : Colors.white, fontWeight: FontWeight.bold)),
+          backgroundColor: color ?? theme.colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 

@@ -78,11 +78,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         });
         setState(() => _isEditing = false);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated successfully')));
+          _snack('Profile updated successfully', Colors.green);
         }
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving profile: $e')));
+      if (mounted) _snack('Error saving profile: $e', Colors.red);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -143,7 +143,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _snack(String msg, [Color? color]) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color, behavior: SnackBarBehavior.floating));
+      final theme = Theme.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg, style: TextStyle(color: (color == null || color == theme.colorScheme.primary) ? Colors.black : Colors.white, fontWeight: FontWeight.bold)),
+          backgroundColor: color ?? theme.colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
     }
   }
 
