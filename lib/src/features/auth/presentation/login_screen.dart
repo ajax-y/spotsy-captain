@@ -28,7 +28,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _handleLogin() async {
     if (_phoneController.text.trim().isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter phone and password')));
+      _snack('Please enter phone and password');
       return;
     }
 
@@ -39,10 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) context.go('/dashboard');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: Colors.redAccent,
-        ));
+        _snack(e.toString().replaceAll('Exception: ', ''), isError: true);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -52,9 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _handleForgotPassword() async {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your phone number first')),
-      );
+      _snack('Please enter your phone number first');
       return;
     }
 
@@ -175,20 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: () => context.go('/register'),
                     child: const Text('Get Started'),
                   ),
-                  const SizedBox(height: 32),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('New here? ', style: TextStyle(color: Colors.white38)),
-                      GestureDetector(
-                        onTap: () => context.go('/register'),
-                        child: Text(
-                          'Sign Up',
-                          style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -196,6 +178,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ],
       ),
     );
+  }
+
+  void _snack(String msg, {bool isError = false}) {
+    if (mounted) {
+      final theme = Theme.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14)),
+          backgroundColor: isError ? Colors.orangeAccent : theme.colorScheme.primary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        ),
+      );
+    }
   }
 }
 
