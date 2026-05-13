@@ -60,7 +60,10 @@ class ParkingSpaceDetailScreen extends ConsumerWidget {
         Text('Details', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[400])),
         const SizedBox(height: 12),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          _detailChip(Icons.commute, space.spaceType == SpaceType.bike ? 'Bike' : space.spaceType == SpaceType.car ? 'Car' : 'Mixed'),
+          _detailChip(
+            (space.spaceType == SpaceType.carSmall || space.spaceType == SpaceType.carLarge) ? Icons.directions_car_rounded : Icons.commute,
+            space.spaceType == SpaceType.bike ? 'Bike' : space.spaceType == SpaceType.carSmall ? 'Small Car' : space.spaceType == SpaceType.carLarge ? 'Big Car' : 'Mixed',
+          ),
           if (space.hasEvCharging) _detailChip(Icons.ev_station, 'EV Charging'),
           if (space.hasCctv) _detailChip(Icons.videocam, 'CCTV'),
           if (space.hasSecurity) _detailChip(Icons.security, 'Security'),

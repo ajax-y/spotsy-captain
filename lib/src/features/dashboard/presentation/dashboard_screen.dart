@@ -360,8 +360,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Text(space.address, style: const TextStyle(color: Colors.white38, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 16),
               Row(children: [
-                _badge(space.spaceType == SpaceType.bike ? Icons.two_wheeler_rounded : space.spaceType == SpaceType.car ? Icons.directions_car_rounded : Icons.commute_rounded,
-                  space.spaceType == SpaceType.bike ? 'Bike' : space.spaceType == SpaceType.car ? 'Car' : 'Mixed'),
+                _badge(
+                  space.spaceType == SpaceType.bike ? Icons.two_wheeler_rounded : (space.spaceType == SpaceType.carSmall || space.spaceType == SpaceType.carLarge) ? Icons.directions_car_rounded : Icons.commute_rounded,
+                  space.spaceType == SpaceType.bike ? 'Bike' : space.spaceType == SpaceType.carSmall ? 'Small Car' : space.spaceType == SpaceType.carLarge ? 'Big Car' : 'Mixed',
+                ),
                 const SizedBox(width: 8),
                 if (space.hasEvCharging) ...[_badge(Icons.ev_station_rounded, 'EV'), const SizedBox(width: 8)],
                 const Spacer(),
