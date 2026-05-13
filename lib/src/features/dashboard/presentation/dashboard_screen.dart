@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:ui';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
 import '../../../models/parking_space.dart';
 import '../data/dashboard_providers.dart';
 import '../../profile/data/profile_providers.dart';
@@ -85,17 +87,42 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
-  void _snack(String msg) {
+  void _snack(String msg, {bool isError = false}) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(msg, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14)),
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          backgroundColor: isError ? Colors.orangeAccent : Theme.of(context).colorScheme.primary,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
         ),
       );
+    }
+  }
+
+  Future<void> _searchLocation(String query) async {
+    if (query.isEmpty) return;
+    _snack('Searching for "$query"...');
+    try {
+      final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1');
+      final response = await http.get(url, headers: {'User-Agent': 'SpotsyCaptainApp/1.0 (com.example.spotsy)'});
+      if (response.statusCode == 200) {
+        final List results = json.decode(response.body);
+        if (results.isNotEmpty) {
+          final lat = double.parse(results[0]['lat']);
+          final lon = double.parse(results[0]['lon']);
+          final displayName = results[0]['display_name'].split(',')[0];
+          _mapController.move(LatLng(lat, lon), 14);
+          _snack('Found: $displayName');
+        } else {
+          _snack('No locations found for "$query"', isError: true);
+        }
+      } else {
+        _snack('Search service unavailable', isError: true);
+      }
+    } catch (e) {
+      _snack('Search error: $e', isError: true);
     }
   }
 
@@ -132,7 +159,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.spotsy',
+                userAgentPackageName: 'com.spotsy.captain.app',
+                tileBuilder: (context, tileWidget, tile) => ColorFiltered(
+                  colorFilter: const ColorFilter.matrix([-1,0,0,0,255, 0,-1,0,0,255, 0,0,-1,0,255, 0,0,0,1,0]),
+                  child: tileWidget,
+                ),
               ),
               MarkerLayer(markers: [
                 Marker(point: _currentLocation, width: 24, height: 24, child: Container(
@@ -224,27 +255,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     opacity: 0.1, // Increased visibility
                     child: TextField(
                       style: const TextStyle(color: Colors.white),
-                      onSubmitted: (val) {
-                        final search = val.toLowerCase();
-                        if (search.contains('chennai')) {
-                          _mapController.move(const LatLng(13.0827, 80.2707), 13);
-                          _snack('Moving to Chennai...');
-                        } else if (search.contains('mumbai')) {
-                          _mapController.move(const LatLng(19.0760, 72.8777), 12);
-                          _snack('Moving to Mumbai...');
-                        } else if (search.contains('delhi')) {
-                          _mapController.move(const LatLng(28.6139, 77.2090), 12);
-                          _snack('Moving to Delhi...');
-                        } else if (search.contains('madurai')) {
-                          _mapController.move(const LatLng(9.9252, 78.1198), 13);
-                          _snack('Moving to Madurai...');
-                        } else if (search.contains('bangalore') || search.contains('bengaluru')) {
-                          _mapController.move(const LatLng(12.9716, 77.5946), 13);
-                          _snack('Moving to Bangalore...');
-                        } else {
-                          _snack('Searching for "$val"...');
-                        }
-                      },
+                      onSubmitted: _searchLocation,
                       decoration: InputDecoration(
                         hintText: 'Search location',
                         hintStyle: const TextStyle(color: Colors.white54),
