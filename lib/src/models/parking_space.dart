@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum SpaceType { bike, car, mixed }
+enum SpaceType { bike, carSmall, carLarge, mixed }
 
 class ParkingSpacePhoto {
   final String id;

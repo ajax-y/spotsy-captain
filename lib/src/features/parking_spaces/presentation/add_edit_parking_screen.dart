@@ -322,6 +322,20 @@ class _AddEditParkingScreenState extends ConsumerState<AddEditParkingScreen> {
                       ),
                     ),
                     const SizedBox(height: 32),
+                    _sectionHeader('Vehicle Type'),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _typeChip('Bike', Icons.two_wheeler_rounded, SpaceType.bike),
+                        const SizedBox(width: 8),
+                        _typeChip('Small Car', Icons.directions_car_rounded, SpaceType.carSmall),
+                        const SizedBox(width: 8),
+                        _typeChip('Big Car', Icons.airport_shuttle_rounded, SpaceType.carLarge),
+                        const SizedBox(width: 8),
+                        _typeChip('Mixed', Icons.commute_rounded, SpaceType.mixed),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
                     
                     _sectionHeader('Amenities'),
                     const SizedBox(height: 16),
@@ -385,6 +399,30 @@ class _AddEditParkingScreenState extends ConsumerState<AddEditParkingScreen> {
       backgroundColor: Colors.white.withValues(alpha: 0.05),
       side: BorderSide.none,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+
+  Widget _typeChip(String label, IconData icon, SpaceType type) {
+    final theme = Theme.of(context);
+    final selected = _spaceType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _spaceType = type),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? theme.colorScheme.primary : Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 20, color: selected ? Colors.black : Colors.white70),
+              const SizedBox(height: 4),
+              Text(label, textAlign: TextAlign.center, style: TextStyle(color: selected ? Colors.black : Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

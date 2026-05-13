@@ -79,15 +79,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
       _mapController.move(_currentLocation, 15.0);
     } catch (e) {
-      _snack('Location error: $e');
+      _snack(e.toString());
     } finally {
       if (mounted) setState(() => _locationLoading = false);
     }
   }
 
   void _snack(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        ),
+      );
+    }
   }
 
   Color _markerColor(ParkingSpace s) {
@@ -181,18 +189,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text('Hello, ${userProfileAsync.value?.name ?? 'Alex'} ', style: theme.textTheme.headlineMedium?.copyWith(fontSize: 28, color: Colors.white)),
-                              const Text('👋', style: TextStyle(fontSize: 24)),
-                            ],
-                          ),
-                          const Text('Find and book your perfect parking spot', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(child: Text('Hello, ${userProfileAsync.value?.name ?? 'Alex'} ', style: theme.textTheme.headlineMedium?.copyWith(fontSize: 26, color: Colors.white, overflow: TextOverflow.ellipsis))),
+                                const Text('👋', style: TextStyle(fontSize: 24)),
+                              ],
+                            ),
+                            const Text('Find and book your perfect parking spot', style: TextStyle(color: Colors.white70, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 12),
                       GestureDetector(
                         onTap: () => context.go('/profile'),
                         child: CircleAvatar(

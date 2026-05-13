@@ -76,10 +76,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.redAccent,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text((e as dynamic).message ?? 'Login failed', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

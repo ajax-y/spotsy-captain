@@ -28,64 +28,63 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final userProfileAsync = ref.watch(userProfileProvider);
-
-    // Profile check: Only trigger if we have data (or null data) and haven't shown it yet
-    userProfileAsync.whenData((profile) {
-      if (profile == null && !_dialogShown) {
-        _dialogShown = true;
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => Dialog(
-                backgroundColor: Colors.transparent,
-                child: GlassContainer(
-                  padding: const EdgeInsets.all(24),
-                  borderRadius: 32,
-                  opacity: 0.1,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Complete Profile', style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'We couldn\'t find your profile name. Would you like to set it up or sign out and start fresh?',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      const SizedBox(height: 32),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () async {
-                              Navigator.pop(context);
-                              await FirebaseAuth.instance.signOut();
-                              if (mounted) context.go('/login');
-                            },
-                            child: const Text('SIGN OUT', style: TextStyle(color: Colors.redAccent)),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              widget.onTap(3); // Go to profile tab
-                            },
-                            child: const Text('SETUP NAME'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+    
+    // Use ref.listen to trigger the dialog only when the profile state actually changes to null
+    ref.listen(userProfileProvider, (previous, next) {
+      next.whenData((profile) {
+        if (profile == null && !_dialogShown) {
+          _dialogShown = true;
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => Dialog(
+              backgroundColor: Colors.transparent,
+              child: GlassContainer(
+                padding: const EdgeInsets.all(24),
+                borderRadius: 32,
+                opacity: 0.1,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Complete Profile', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'We couldn\'t find your profile name. Would you like to set it up or sign out and start fresh?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 32),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            await FirebaseAuth.instance.signOut();
+                            if (mounted) context.go('/login');
+                          },
+                          child: const Text('SIGN OUT', style: TextStyle(color: Colors.redAccent)),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            widget.onTap(3); // Go to profile tab
+                          },
+                          child: const Text('SETUP NAME'),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            );
-          }
-        });
-      }
+            ),
+          );
+        }
+      });
     });
+
+    final userProfileAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
       extendBody: true,
